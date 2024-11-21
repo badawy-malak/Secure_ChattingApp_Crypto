@@ -1,15 +1,10 @@
 import socket
 import threading
 import sqlite3
-import hashlib
 
 # SQLite database setup
 DATABASE = 'Secure_Chatting_Application_DB.db'
-clients =[]
-
-def hash_password(password):
-    """Hash the password using SHA-256."""
-    return hashlib.sha256(password.encode()).hexdigest()
+clients = []
 
 def verify_credentials(username, password):
     """Verify username and password against the database."""
@@ -24,12 +19,11 @@ def verify_credentials(username, password):
         conn.close()
         return False, "This username does not exist."
     
-    # Hash the input password and compare with the stored hash
-    hashed_password = hash_password(password)
+    # Compare the input password directly with the stored password
     stored_password = result[0]
     conn.close()
 
-    if stored_password != hashed_password:  # Incorrect password
+    if stored_password != password:  # Incorrect password
         return False, "The password is incorrect."
     
     return True, "Login successful."
@@ -41,7 +35,6 @@ def broadcast_message(message, sender_socket):
                 client.send(message.encode())
             except:
                 clients.remove((client, user))
-
 
 def handle_client(client_socket, client_address):
     """Handle login and chat functionality for a single client."""
@@ -117,6 +110,12 @@ if __name__ == "__main__":
         password TEXT NOT NULL
     )
     """)
+    conn.commit()
+
+    # Insert a test user with plain-text password
+    test_username = 'rita'
+    test_password = '12'  # Plain-text password
+    cursor.execute("INSERT OR IGNORE INTO users (username, password) VALUES (?, ?)", (test_username, test_password))
     conn.commit()
     conn.close()
 
