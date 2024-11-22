@@ -100,16 +100,24 @@ def handle_client(client_socket, client_address):
         choice = client_socket.recv(1024).decode().strip()
 
         if choice == "2":  # Signup
-            client_socket.send("Enter a username: ".encode())
-            username = client_socket.recv(1024).decode().strip()
+            attempts = 0
+            while attempts < 2:
+                client_socket.send("Enter a username: ".encode())
+                username = client_socket.recv(1024).decode().strip()
 
-            client_socket.send("Enter a password: ".encode())
-            password = client_socket.recv(1024).decode().strip()
+                client_socket.send("Enter a password: ".encode())
+                password = client_socket.recv(1024).decode().strip()
 
-            # Register the user
-            success, message = register_user(username, password)
-            client_socket.send(message.encode())
-            if not success:
+                # Attempt to register the user
+                success, message = register_user(username, password)
+                client_socket.send(message.encode())
+                if success:
+                    break  # Signup successful
+                else:
+                    attempts += 1
+
+            if attempts == 2:
+                client_socket.send("Too many failed signup attempts. Connection terminated.".encode())
                 client_socket.close()
                 return
 
