@@ -8,27 +8,30 @@ clients = []
 
 def verify_credentials(username, password):
     """Verify username and password against the database."""
-    conn = sqlite3.connect(DATABASE)
-    cursor = conn.cursor()
+    try:
+        conn = sqlite3.connect(DATABASE)
+        cursor = conn.cursor()
 
-    # Check if the username exists
-    cursor.execute("SELECT password FROM users WHERE username = ?", (username,))
-    result = cursor.fetchone()
+        # Check if the username exists
+        cursor.execute("SELECT password FROM users WHERE username = ?", (username,))
+        result = cursor.fetchone()
 
-    if not result:  # Username not found in the database
+        if not result:  # Username not found in the database
+            return False, "This username does not exist."
+        
+        # Compare the input password with the stored password
+        stored_password = result[0]
+        if stored_password != password:  # Incorrect password
+            return False, "The password is incorrect."
+        
+        return True, "Login successful."
+    except sqlite3.Error as e:
+        return False, f"Database error: {e}"
+    finally:
         conn.close()
-        return False, "This username does not exist."
-    
-    # Compare the input password directly with the stored password
-    stored_password = result[0]
-    conn.close()
-
-    if stored_password != password:  # Incorrect password
-        return False, "The password is incorrect."
-    
-    return True, "Login successful."
 
 def broadcast_message(message, sender_socket):
+    """Broadcast messages to all clients except the sender."""
     for client, user in clients:
         if client != sender_socket:
             try:
@@ -43,10 +46,10 @@ def handle_client(client_socket, client_address):
 
         # Ask the client for login credentials
         client_socket.send("Enter your username: ".encode())
-        username = client_socket.recv(1024).decode()
+        username = client_socket.recv(1024).decode().strip()
 
         client_socket.send("Enter your password: ".encode())
-        password = client_socket.recv(1024).decode()
+        password = client_socket.recv(1024).decode().strip()
 
         # Verify credentials
         is_valid, message = verify_credentials(username, password)
