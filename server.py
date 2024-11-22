@@ -6,11 +6,40 @@ import sqlite3
 DATABASE = 'Secure_Chatting_Application_DB.db'
 clients = []
 
+def initialize_database():
+    """Initialize the database and enable WAL mode."""
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
+    try:
+        # Enable WAL mode
+        cursor.execute("PRAGMA journal_mode=WAL;")
+        # Create the users table if it doesn't exist
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL
+        )
+        """)
+        conn.commit()
+
+        # Insert a test user
+        test_username = 'rita'
+        test_password = '12'  # Plain-text password
+        cursor.execute("INSERT OR IGNORE INTO users (username, password) VALUES (?, ?)", (test_username, test_password))
+        conn.commit()
+    except sqlite3.Error as e:
+        print(f"Database initialization error: {e}")
+    finally:
+        conn.close()
+
 def verify_credentials(username, password):
     """Verify username and password against the database."""
     try:
         conn = sqlite3.connect(DATABASE)
         cursor = conn.cursor()
+        # Enable WAL mode for this connection
+        cursor.execute("PRAGMA journal_mode=WAL;")
 
         # Check if the username exists
         cursor.execute("SELECT password FROM users WHERE username = ?", (username,))
@@ -30,6 +59,28 @@ def verify_credentials(username, password):
     finally:
         conn.close()
 
+def register_user(username, password):
+    """Register a new user in the database."""
+    try:
+        conn = sqlite3.connect(DATABASE)
+        cursor = conn.cursor()
+        # Enable WAL mode for this connection
+        cursor.execute("PRAGMA journal_mode=WAL;")
+
+        # Check if the username is already taken
+        cursor.execute("SELECT username FROM users WHERE username = ?", (username,))
+        if cursor.fetchone():
+            return False, "This username is already taken."
+        
+        # Insert the new user into the database
+        cursor.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, password))
+        conn.commit()
+        return True, "Signup successful. You can now log in."
+    except sqlite3.Error as e:
+        return False, f"Database error: {e}"
+    finally:
+        conn.close()
+
 def broadcast_message(message, sender_socket):
     """Broadcast messages to all clients except the sender."""
     for client, user in clients:
@@ -40,11 +91,29 @@ def broadcast_message(message, sender_socket):
                 clients.remove((client, user))
 
 def handle_client(client_socket, client_address):
-    """Handle login and chat functionality for a single client."""
+    """Handle login, signup, and chat functionality for a single client."""
     try:
         print(f"New connection from {client_address}")
 
-        # Ask the client for login credentials
+        # Ask the client whether they want to login or signup
+        client_socket.send("Do you want to (1) Login or (2) Signup? Enter 1 or 2: ".encode())
+        choice = client_socket.recv(1024).decode().strip()
+
+        if choice == "2":  # Signup
+            client_socket.send("Enter a username: ".encode())
+            username = client_socket.recv(1024).decode().strip()
+
+            client_socket.send("Enter a password: ".encode())
+            password = client_socket.recv(1024).decode().strip()
+
+            # Register the user
+            success, message = register_user(username, password)
+            client_socket.send(message.encode())
+            if not success:
+                client_socket.close()
+                return
+
+        # Proceed with login
         client_socket.send("Enter your username: ".encode())
         username = client_socket.recv(1024).decode().strip()
 
@@ -103,23 +172,5 @@ def start_server():
         client_thread.start()
 
 if __name__ == "__main__":
-    # Create the database and users table if not exists
-    conn = sqlite3.connect(DATABASE)
-    cursor = conn.cursor()
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL
-    )
-    """)
-    conn.commit()
-
-    # Insert a test user with plain-text password
-    test_username = 'rita'
-    test_password = '12'  # Plain-text password
-    cursor.execute("INSERT OR IGNORE INTO users (username, password) VALUES (?, ?)", (test_username, test_password))
-    conn.commit()
-    conn.close()
-
+    initialize_database()
     start_server()

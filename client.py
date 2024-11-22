@@ -1,4 +1,3 @@
-
 import socket
 import threading
 
@@ -15,7 +14,6 @@ def receive_messages(client_socket):
             print("Disconnected from server.")
             break
 
-
 def start_client():
     SERVER_HOST = '127.0.0.1'
     SERVER_PORT = 12345
@@ -26,8 +24,10 @@ def start_client():
     receive_thread = threading.Thread(target=receive_messages, args=(client_socket,))
     receive_thread.daemon = True
     receive_thread.start()
+
     try:
         while True:
+            # Capture user input and send it to the server
             message = input()
             client_socket.send(message.encode())
     except KeyboardInterrupt:
@@ -36,4 +36,7 @@ def start_client():
         client_socket.close()
 
 if __name__ == "__main__":
+    print("Welcome to the Chat Application!")
+    print("You will be prompted to (1) Login or (2) Signup by the server.")
+    print("Follow the server's instructions.")
     start_client()
