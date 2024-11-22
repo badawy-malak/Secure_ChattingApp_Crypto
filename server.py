@@ -113,17 +113,25 @@ def handle_client(client_socket, client_address):
                 client_socket.close()
                 return
 
-        # Proceed with login
-        client_socket.send("Enter your username: ".encode())
-        username = client_socket.recv(1024).decode().strip()
+        # Proceed with login, allowing up to 2 attempts
+        attempts = 0
+        while attempts < 2:
+            client_socket.send("Enter your username: ".encode())
+            username = client_socket.recv(1024).decode().strip()
 
-        client_socket.send("Enter your password: ".encode())
-        password = client_socket.recv(1024).decode().strip()
+            client_socket.send("Enter your password: ".encode())
+            password = client_socket.recv(1024).decode().strip()
 
-        # Verify credentials
-        is_valid, message = verify_credentials(username, password)
-        client_socket.send(message.encode())
-        if not is_valid:
+            # Verify credentials
+            is_valid, message = verify_credentials(username, password)
+            client_socket.send(message.encode())
+            if is_valid:
+                break  # Successful login
+            else:
+                attempts += 1
+
+        if attempts == 2:
+            client_socket.send("Too many failed login attempts. Connection terminated.".encode())
             client_socket.close()
             return
 
