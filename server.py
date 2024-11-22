@@ -21,6 +21,15 @@ def initialize_database():
             password TEXT NOT NULL
         )
         """)
+        # Create the messages table if it doesn't exist
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sender TEXT NOT NULL,
+            message TEXT NOT NULL,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
         conn.commit()
 
         # Insert a test user
@@ -81,14 +90,40 @@ def register_user(username, password):
     finally:
         conn.close()
 
-def broadcast_message(message, sender_socket):
+def broadcast_message(username, message, sender_socket):
     """Broadcast messages to all clients except the sender."""
+    save_message(username, message)
     for client, user in clients:
         if client != sender_socket:
             try:
-                client.send(message.encode())
+                client.send(f"{username}: {message}".encode())
             except:
                 clients.remove((client, user))
+
+def save_message(sender, message):
+    """Save a message to the database."""
+    try:
+        conn = sqlite3.connect(DATABASE)
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO messages (sender, message) VALUES (?, ?)", (sender, message))
+        conn.commit()
+    except sqlite3.Error as e:
+        print(f"Database error while saving message: {e}")
+    finally:
+        conn.close()
+
+def fetch_messages():
+    """Fetch the chat history from the database."""
+    try:
+        conn = sqlite3.connect(DATABASE)
+        cursor = conn.cursor()
+        cursor.execute("SELECT sender, message, timestamp FROM messages ORDER BY timestamp ASC")
+        return cursor.fetchall()
+    except sqlite3.Error as e:
+        print(f"Database error while fetching messages: {e}")
+        return []
+    finally:
+        conn.close()
 
 def handle_client(client_socket, client_address):
     """Handle login, signup, and chat functionality for a single client."""
@@ -143,6 +178,12 @@ def handle_client(client_socket, client_address):
             client_socket.close()
             return
 
+        # Display chat history
+        client_socket.send("Chat history:\n".encode())
+        chat_history = fetch_messages()
+        for msg in chat_history:
+            client_socket.send(f"{msg[2]} - {msg[0]}: {msg[1]}\n".encode())
+
         # Successful login
         client_socket.send("Welcome to the Chat Room!".encode())
         clients.append((client_socket, username))
@@ -159,7 +200,7 @@ def handle_client(client_socket, client_address):
                 print(f"Message from {username}: {message}")
 
                 # Broadcast the username and message to other clients
-                broadcast_message(f"{username}: {message}", client_socket)
+                broadcast_message(username, message, client_socket)
             except ConnectionResetError:
                 print(f"Connection lost with {username} ({client_address})")
                 break
