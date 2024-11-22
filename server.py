@@ -1,7 +1,8 @@
 import socket
 import threading
 import sqlite3
-import sys  # Import sys for exiting the program
+import sys
+import bcrypt  # Import bcrypt for password hashing
 
 # SQLite database setup
 DATABASE = 'Secure_Chatting_Application_DB.db'
@@ -32,23 +33,25 @@ def initialize_database():
         )
         """)
         conn.commit()
-
-        # Insert a test user
-        test_username = 'rita'
-        test_password = '12'  # Plain-text password
-        cursor.execute("INSERT OR IGNORE INTO users (username, password) VALUES (?, ?)", (test_username, test_password))
-        conn.commit()
     except sqlite3.Error as e:
         print(f"Database initialization error: {e}")
     finally:
         conn.close()
+
+def hash_password(password):
+    """Hash a password for secure storage."""
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt())
+
+def verify_password(stored_password, provided_password):
+    """Verify a hashed password."""
+    return bcrypt.checkpw(provided_password.encode(), stored_password)
+
 
 def verify_credentials(username, password):
     """Verify username and password against the database."""
     try:
         conn = sqlite3.connect(DATABASE)
         cursor = conn.cursor()
-        # Enable WAL mode for this connection
         cursor.execute("PRAGMA journal_mode=WAL;")
 
         # Check if the username exists
@@ -58,9 +61,9 @@ def verify_credentials(username, password):
         if not result:  # Username not found in the database
             return False, "This username does not exist."
         
-        # Compare the input password with the stored password
-        stored_password = result[0]
-        if stored_password != password:  # Incorrect password
+        # Compare the hashed password
+        stored_password = result[0]  # This is stored as binary
+        if not verify_password(stored_password, password):
             return False, "The password is incorrect."
         
         return True, "Login successful."
@@ -74,7 +77,6 @@ def register_user(username, password):
     try:
         conn = sqlite3.connect(DATABASE)
         cursor = conn.cursor()
-        # Enable WAL mode for this connection
         cursor.execute("PRAGMA journal_mode=WAL;")
 
         # Check if the username is already taken
@@ -82,8 +84,9 @@ def register_user(username, password):
         if cursor.fetchone():
             return False, "This username is already taken."
         
-        # Insert the new user into the database
-        cursor.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, password))
+        # Hash the password and store it as binary
+        hashed_password = hash_password(password)
+        cursor.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, hashed_password))
         conn.commit()
         return True, "Signup successful. You can now log in."
     except sqlite3.Error as e:
