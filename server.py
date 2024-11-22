@@ -1,6 +1,7 @@
 import socket
 import threading
 import sqlite3
+import sys  # Import sys for exiting the program
 
 # SQLite database setup
 DATABASE = 'Secure_Chatting_Application_DB.db'
@@ -152,9 +153,9 @@ def handle_client(client_socket, client_address):
                     attempts += 1
 
             if attempts == 2:
-                client_socket.send("Too many failed signup attempts. Connection terminated.".encode())
+                client_socket.send("Too many failed signup attempts. Exiting program.".encode())
                 client_socket.close()
-                return
+                sys.exit(1)  # Exit the program
 
         # Proceed with login, allowing up to 2 attempts
         attempts = 0
@@ -174,9 +175,9 @@ def handle_client(client_socket, client_address):
                 attempts += 1
 
         if attempts == 2:
-            client_socket.send("Too many failed login attempts. Connection terminated.".encode())
+            client_socket.send("Too many failed login attempts. Exiting program.".encode())
             client_socket.close()
-            return
+            sys.exit(1)  # Exit the program
 
         # Display chat history
         client_socket.send("Chat history:\n".encode())
