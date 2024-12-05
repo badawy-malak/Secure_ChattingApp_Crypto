@@ -1,0 +1,16 @@
+ERROR:root:Error handling client ('127.0.0.1', 42812): [WinError 10054] An existing connection was forcibly closed by the remote host
+ERROR:root:Error handling client ('127.0.0.1', 42824): [WinError 10054] An existing connection was forcibly closed by the remote host
+ERROR:root:Error handling client ('127.0.0.1', 42900): [WinError 10054] An existing connection was forcibly closed by the remote host
+ERROR:root:Error handling client ('127.0.0.1', 42909): [WinError 10054] An existing connection was forcibly closed by the remote host
+ERROR:root:Error handling client ('127.0.0.1', 42918): [WinError 10054] An existing connection was forcibly closed by the remote host
+ERROR:root:Error handling client ('127.0.0.1', 42980): [WinError 10054] An existing connection was forcibly closed by the remote host
+ERROR:root:Error handling client ('127.0.0.1', 43109): [WinError 10053] An established connection was aborted by the software in your host machine
+ERROR:root:Error handling client ('127.0.0.1', 43161): [WinError 10054] An existing connection was forcibly closed by the remote host
+ERROR:root:Error handling client ('127.0.0.1', 43181): [WinError 10054] An existing connection was forcibly closed by the remote host
+ERROR:root:Error handling client ('127.0.0.1', 43233): [WinError 10054] An existing connection was forcibly closed by the remote host
+ERROR:root:Error handling client ('127.0.0.1', 43234): [WinError 10054] An existing connection was forcibly closed by the remote host
+ERROR:root:Error handling client ('127.0.0.1', 43290): [WinError 10054] An existing connection was forcibly closed by the remote host
+ERROR:root:Error handling client ('127.0.0.1', 43291): [WinError 10054] An existing connection was forcibly closed by the remote host
+ERROR:root:Error handling client ('127.0.0.1', 43316): [WinError 10054] An existing connection was forcibly closed by the remote host
+ERROR:root:Error handling client ('127.0.0.1', 43317): [WinError 10054] An existing connection was forcibly closed by the remote host
+ERROR:root:Error handling client ('127.0.0.1', 43443): [WinError 10054] An existing connection was forcibly closed by the remote host
