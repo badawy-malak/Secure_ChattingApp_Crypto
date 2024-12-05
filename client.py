@@ -7,7 +7,7 @@ from base64 import urlsafe_b64encode, urlsafe_b64decode
 import os
 
 BLOCK_SIZE = 16
-shared_aes_key = None
+shared_aes_key = None  # Shared AES key for message encryption and decryption
 
 
 def generate_rsa_keypair():
@@ -50,7 +50,6 @@ def aes_decrypt(encrypted_message, key):
         cipher = Cipher(algorithms.AES(key), modes.GCM(iv, tag))
         decryptor = cipher.decryptor()
         plaintext = decryptor.update(ciphertext) + decryptor.finalize()
-        print(f"[DEBUG] Encrypted Message: {encrypted_message.hex()}")  # Debug statement
         return plaintext.decode()
     except Exception as e:
         print(f"[ERROR] AES decryption failed: {e}")
@@ -84,24 +83,64 @@ def receive_data(client_socket, private_key):
                 if shared_aes_key is None:
                     print("[ERROR] AES key not yet established. Cannot decrypt message.")
                     continue
+
+                # Display the received encrypted message
+                print(f"[MESSAGE] Received encrypted message: {data.hex()}")
+
+                # Decrypt the encrypted message
                 plaintext = aes_decrypt(data, shared_aes_key)
-                print(f"[MESSAGE] {plaintext}")
+
+                # Display the decrypted plaintext message
+                print(f"[MESSAGE] Decrypted message: {plaintext}")
+
         except Exception as e:
             print(f"[ERROR] Error processing received data: {e}")
 
 
 def start_client():
-    global shared_aes_key
     SERVER_HOST = '127.0.0.1'
     SERVER_PORT = 12345
 
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client_socket.connect((SERVER_HOST, SERVER_PORT))
-
     try:
-        private_key, public_key = generate_rsa_keypair()
-        send_public_key(client_socket, public_key)
-        threading.Thread(target=receive_data, args=(client_socket, private_key), daemon=True).start()
+        client_socket.connect((SERVER_HOST, SERVER_PORT))
+        print("[DEBUG] Connected to server.")
+
+        while True:
+            choice = input("Do you want to (1) Signup or (2) Login? Enter 1 or 2: ").strip()
+            if choice == "1":
+                username = input("Enter a username: ").strip()
+                password = input("Enter a password: ").strip()
+                client_socket.send(f"SIGNUP:{username},{password}".encode())
+            elif choice == "2":
+                username = input("Enter your username: ").strip()
+                password = input("Enter your password: ").strip()
+                client_socket.send(f"LOGIN:{username},{password}".encode())
+            else:
+                print("[ERROR] Invalid choice. Please enter 1 or 2.")
+                continue
+
+            try:
+                response = client_socket.recv(1024).decode()
+                if response == "SIGNUP_SUCCESS":
+                    print("[DEBUG] Signup successful. You can now login.")
+                elif response == "SIGNUP_FAILED":
+                    print("[ERROR] Signup failed. Username might already exist.")
+                elif response == "LOGIN_SUCCESS":
+                    print("[DEBUG] Login successful. Generating RSA key pair.")
+                    private_key, public_key = generate_rsa_keypair()
+                    send_public_key(client_socket, public_key)
+
+                    # Start receiving encrypted data
+                    threading.Thread(target=receive_data, args=(client_socket, private_key), daemon=True).start()
+                    break
+                elif response == "LOGIN_FAILED":
+                    print("[ERROR] Login failed. Try again.")
+                else:
+                    print("[ERROR] Unexpected response from server.")
+            except Exception as e:
+                print(f"[ERROR] Communication error: {e}")
+                break
 
         while True:
             if shared_aes_key is None:
@@ -111,8 +150,13 @@ def start_client():
             message = input("Enter message: ")
             encrypted_message = aes_encrypt(message, shared_aes_key)
             client_socket.send(encrypted_message)
+    except ConnectionAbortedError as e:
+        print(f"[ERROR] Connection was aborted: {e}")
+    except Exception as e:
+        print(f"[ERROR] Client error: {e}")
     finally:
         client_socket.close()
+        print("[DEBUG] Client disconnected.")
 
 
 if __name__ == "__main__":
