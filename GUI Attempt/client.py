@@ -71,8 +71,10 @@ class ReceiverThread(QThread):
 
                 if data.startswith(b"AES_KEY:"):
                     encrypted_key = data[len(b"AES_KEY:"):]
+                    print("[DEBUG - CLIENT] Encrypted AES key (received):", urlsafe_b64encode(encrypted_key).decode())
                     try:
                         self.shared_aes_key = rsa_decrypt_value(encrypted_key, self.private_key)
+                        print("[DEBUG - CLIENT] Decrypted AES key:", urlsafe_b64encode(self.shared_aes_key).decode())
                         self.aes_key_ready.emit()
                     except Exception as e:
                         self.error_occurred.emit(f"Error decrypting AES key: {e}")
@@ -116,14 +118,19 @@ class ChatWindow(QWidget):
     def init_ui(self):
         self.main_layout = QVBoxLayout()
 
+        # Apply a global stylesheet for the whole window
+        self.setStyleSheet("QWidget { font-size: 14px; }")
+
         # Welcome section
-        self.welcome_label = QLabel("<h2>Welcome to Secure Chat</h2>", self)
+        self.welcome_label = QLabel("<h2>Welcome to Malak's Secure Chat Application !</h2>", self)
         self.login_btn = QPushButton("Login", self)
         self.signup_btn = QPushButton("Signup", self)
 
         self.main_layout.addWidget(self.welcome_label, 0)
         self.main_layout.addWidget(self.login_btn, 0)
         self.main_layout.addWidget(self.signup_btn, 0)
+
+    
 
         # Credential section (hidden initially)
         self.username_input = QLineEdit(self)
@@ -133,14 +140,20 @@ class ChatWindow(QWidget):
         self.password_input.setEchoMode(QLineEdit.Password)
         self.auth_confirm_btn = QPushButton("Confirm", self)
 
-        # We'll add these to the layout later, but start hidden
+    # We'll add these to the layout later, but start hidden
         self.username_input.hide()
         self.password_input.hide()
         self.auth_confirm_btn.hide()
 
+        # Add credentials to the layout
         self.main_layout.addWidget(self.username_input)
         self.main_layout.addWidget(self.password_input)
         self.main_layout.addWidget(self.auth_confirm_btn)
+
+        # **Add the error label here**
+        self.error_label = QLabel("", self)
+        self.main_layout.addWidget(self.error_label)
+        self.error_label.hide()  # Hide by default
 
         # Chat section (hidden until logged in)
         self.chat_label = QLabel("<h3>Chat Window</h3>")
@@ -218,13 +231,19 @@ class ChatWindow(QWidget):
         try:
             self.client_socket.send(f"SIGNUP:{username},{password}".encode())
             response = self.client_socket.recv(1024).decode()
+            print("[DEBUG] Server response:", response)  # Debug line
             if response == "SIGNUP_SUCCESS":
                 self.append_chat("[DEBUG] Signup successful. Please login now.")
+                
+                self.error_label.hide()
+                self.error_label.setText("")
+
                 # After signup success, revert to initial screen to allow login
                 self.toggle_auth_fields(False)
                 self.toggle_initial_ui(True)
             else:
-                self.append_chat("[ERROR] Signup failed. Username might already exist.")
+                self.error_label.setText("<span style='color:red;'>Invalid attempt</span>")
+                self.error_label.show()
         except Exception as e:
             self.append_chat(f"[ERROR] Signup error: {e}")
 
@@ -232,12 +251,16 @@ class ChatWindow(QWidget):
         try:
             self.client_socket.send(f"LOGIN:{username},{password}".encode())
             response = self.client_socket.recv(1024).decode()
+            print("[DEBUG] Server response:", response)  # Debug line
             if response == "LOGIN_SUCCESS":
+                self.error_label.hide()
+                self.error_label.setText("")
                 self.logged_in_username = username  # Store the username
                 self.append_chat("[DEBUG] Login successful. Generating RSA key pair.")
                 self.setup_keys_and_start_receiver()
             else:
-                self.append_chat("[ERROR] Login failed. Check credentials.")
+                self.error_label.setText("<span style='color:red;'>Invalid attempt</span>")
+                self.error_label.show()
         except Exception as e:
             self.append_chat(f"[ERROR] Login error: {e}")
 

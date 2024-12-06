@@ -127,7 +127,7 @@ def handle_client(client_socket, address):
 
             elif authenticated:
                 # Relay encrypted messages to all other clients
-                print(f"[DEBUG] Relaying data from {address}")
+                print(f"[DEBUG] Relaying encrypted message from {address}: {data.hex()}")
                 relay_data(client_socket, data)
 
             else:
