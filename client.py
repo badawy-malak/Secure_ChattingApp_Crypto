@@ -71,30 +71,28 @@ def receive_data(client_socket, private_key):
     global shared_aes_key
     while True:
         try:
-            data = client_socket.recv(4096)
-            if not data:
-                break
+            data = client_socket.recv(4096).decode()
 
-            if data.startswith(b"AES_KEY:"):
-                encrypted_key = data[len(b"AES_KEY:"):]
-                shared_aes_key = rsa_decrypt_value(encrypted_key, private_key)
-                print("[DEBUG] AES key established.")
+            # Handle AES key exchange
+            if data.startswith("AES_KEY:"):
+                encrypted_aes_key = bytes.fromhex(data[len("AES_KEY:"):])
+                shared_aes_key = rsa_decrypt_value(encrypted_aes_key, private_key)
+                print("[DEBUG] AES key successfully received and decrypted.")
+
+            # Handle chat history
+            elif data.startswith("HISTORY:"):
+                _, timestamp, sender, encrypted_message, encrypted_aes_key = data.split("|")
+                # Decrypt AES key
+                aes_key = rsa_decrypt_value(bytes.fromhex(encrypted_aes_key), private_key)
+                # Decrypt message
+                plaintext_message = aes_decrypt(bytes.fromhex(encrypted_message), aes_key)
+                print(f"[{timestamp}] {sender}: {plaintext_message}")
+
             else:
-                if shared_aes_key is None:
-                    print("[ERROR] AES key not yet established. Cannot decrypt message.")
-                    continue
-
-                # Display the received encrypted message
-                print(f"[MESSAGE] Received encrypted message: {data.hex()}")
-
-                # Decrypt the encrypted message
-                plaintext = aes_decrypt(data, shared_aes_key)
-
-                # Display the decrypted plaintext message
-                print(f"[MESSAGE] Decrypted message: {plaintext}")
+                print(f"[ERROR] Unknown data format received: {data}")
 
         except Exception as e:
-            print(f"[ERROR] Error processing received data: {e}")
+            print(f"[ERROR] Failed to process received data: {e}")
 
 
 def start_client():
@@ -131,7 +129,6 @@ def start_client():
                     private_key, public_key = generate_rsa_keypair()
                     send_public_key(client_socket, public_key)
 
-                    # Start receiving encrypted data
                     threading.Thread(target=receive_data, args=(client_socket, private_key), daemon=True).start()
                     break
                 elif response == "LOGIN_FAILED":
@@ -148,8 +145,7 @@ def start_client():
                 continue
 
             message = input("Enter message: ")
-            encrypted_message = aes_encrypt(message, shared_aes_key)
-            client_socket.send(encrypted_message)
+            client_socket.send(f"MSG:{message}".encode())
     except ConnectionAbortedError as e:
         print(f"[ERROR] Connection was aborted: {e}")
     except Exception as e:
