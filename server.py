@@ -6,6 +6,7 @@ from cryptography.hazmat.primitives import serialization, hashes
 from base64 import urlsafe_b64encode
 import sqlite3
 import bcrypt
+from base64 import urlsafe_b64encode
 
 AES_KEY_LENGTH = 32  # Length of the AES key in bytes
 
@@ -27,12 +28,36 @@ def initialize_database():
                 password_hash TEXT
             )
         """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS messages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                sender_username TEXT,
+                encrypted_message TEXT,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+       
         conn.commit()
         conn.close()
         print("[DEBUG] Database initialized and users table ensured.")
     except Exception as e:
         print(f"[ERROR] Failed to initialize database: {e}")
 
+def store_message(username, encrypted_message):
+    try:
+        # Convert binary data to a base64 string
+        encoded_message = urlsafe_b64encode(encrypted_message).decode()
+
+        conn = sqlite3.connect(DATABASE_NAME)
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO messages (sender_username, encrypted_message) VALUES (?, ?)",
+                       (username, encoded_message))
+        conn.commit()
+        conn.close()
+        print(f"[DEBUG] Stored message from '{username}' in database as base64.")
+    except Exception as e:
+        print(f"[ERROR] Failed to store message: {e}")
+        
 def hash_password(password):
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
@@ -125,12 +150,19 @@ def handle_client(client_socket, address):
                 encrypted_aes_key = rsa_encrypt_value(global_aes_key, public_key)
                 client_socket.send(b"AES_KEY:" + encrypted_aes_key)
 
-            elif authenticated:
+            elif authenticated and not data.startswith(b"PUBLIC_KEY:"):
+                # This is an encrypted chat message from the authenticated user.
+                username = client_usernames.get(client_socket, "Unknown User")
+
+                # Store the encrypted message in the database before relaying
+                store_message(username, data)
+
                 # Relay encrypted messages to all other clients
                 print(f"[DEBUG] Relaying encrypted message from {address}: {data.hex()}")
                 relay_data(client_socket, data)
 
             else:
+                # If we reach here, the client is not authenticated and is sending unknown data
                 print(f"[ERROR] Unauthenticated client {address} attempted to send data.")
                 client_socket.send(b"ERROR:AUTHENTICATION_REQUIRED")
 
