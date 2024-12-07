@@ -198,7 +198,7 @@ def start_server():
     server_socket.listen(5)
     print(f"[DEBUG] Server listening on {SERVER_HOST}:{SERVER_PORT}")
 
-    while True:
+    while True: 
         client_socket, address = server_socket.accept()
         threading.Thread(target=handle_client, args=(client_socket, address), daemon=True).start()
 
