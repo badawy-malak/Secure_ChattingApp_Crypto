@@ -1,11 +1,10 @@
 import sys
 import os
 import socket
-import threading
 from base64 import urlsafe_b64encode, urlsafe_b64decode
 
 from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QPushButton,
-                             QLineEdit, QTextEdit, QLabel, QHBoxLayout, QSpacerItem, QSizePolicy)
+                             QLineEdit, QTextEdit, QLabel)
 from PyQt5.QtCore import QThread, pyqtSignal
 
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
@@ -130,8 +129,6 @@ class ChatWindow(QWidget):
         self.main_layout.addWidget(self.login_btn, 0)
         self.main_layout.addWidget(self.signup_btn, 0)
 
-    
-
         # Credential section (hidden initially)
         self.username_input = QLineEdit(self)
         self.username_input.setPlaceholderText("Username")
@@ -140,12 +137,11 @@ class ChatWindow(QWidget):
         self.password_input.setEchoMode(QLineEdit.Password)
         self.auth_confirm_btn = QPushButton("Confirm", self)
 
-    # We'll add these to the layout later, but start hidden
+        # We'll add these to the layout later, but start hidden
         self.username_input.hide()
         self.password_input.hide()
         self.auth_confirm_btn.hide()
 
-        # Add credentials to the layout
         self.main_layout.addWidget(self.username_input)
         self.main_layout.addWidget(self.password_input)
         self.main_layout.addWidget(self.auth_confirm_btn)
@@ -194,7 +190,6 @@ class ChatWindow(QWidget):
         self.auth_confirm_btn.setText("Signup")
 
     def toggle_initial_ui(self, visible):
-        # Show/hide welcome, login, signup elements
         self.welcome_label.setVisible(visible)
         self.login_btn.setVisible(visible)
         self.signup_btn.setVisible(visible)
@@ -314,6 +309,25 @@ class ChatWindow(QWidget):
         try:
             # Encrypt the formatted message (with username included)
             encrypted_message = aes_encrypt(formatted_message, self.shared_aes_key)
+
+            # Extract IV, Tag, and Ciphertext
+            iv = encrypted_message[:12]
+            tag = encrypted_message[12:28]
+            ciphertext = encrypted_message[28:]
+
+            # Print the required fields for manual decryption
+            print("\n----- Encryption Details -----")
+            print(f"AES Encrypted Text: {urlsafe_b64encode(encrypted_message).decode()}")
+            print("Cipher Mode: GCM")
+            print("Padding: None (GCM mode doesn't use padding)")
+            print(f"Initialization Vector (IV): {urlsafe_b64encode(iv).decode()}")
+            print(f"Authentication Tag: {urlsafe_b64encode(tag).decode()}")
+            print(f"Ciphertext: {urlsafe_b64encode(ciphertext).decode()}")
+            print(f"Key Size in Bits: {len(self.shared_aes_key) * 8}")  # Convert bytes to bits
+            print(f"Secret Key: {urlsafe_b64encode(self.shared_aes_key).decode()}")
+            print("------------------------------\n")
+
+            # Send the encrypted message to the server
             self.client_socket.send(encrypted_message)
             self.message_input.clear()
         except Exception as e:
