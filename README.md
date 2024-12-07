@@ -23,29 +23,6 @@ A secure client-server chat application that ensures confidentiality and integri
   - sqlite3
 - **Wireshark** (optional): For monitoring network traffic and verifying encryption.
 
----
-
-## **Installation**
-1. **Clone the Repository**:
-   ```bash
-   git clone https://github.com/yourusername/secure-chat-application.git
-   cd secure-chat-application
-   ```
-
-2. **Install Dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Run the Server**:
-   ```bash
-   python server.py
-   ```
-
-4. **Run the Client**:
-   ```bash
-   python client.py
-   ```
 
 ---
 
@@ -93,48 +70,4 @@ secure-chat-application/
 └── database/        # SQLite database (auto-created if not present)
 ```
 
----
 
-## **Testing**
-1. **Functionality Testing**:
-   - Test login, signup, and message sending between multiple clients.
-
-2. **Encryption Verification**:
-   - Use Wireshark to monitor traffic and confirm that all transmitted messages are encrypted.
-
-3. **Decryption Validation**:
-   - Verify that messages can be decrypted using the stored secret key, IV, and authentication tag.
-
----
-
-## **Contributing**
-1. Fork the repository.
-2. Create a new branch:
-   ```bash
-   git checkout -b feature-name
-   ```
-3. Commit your changes:
-   ```bash
-   git commit -m "Add a feature"
-   ```
-4. Push to your branch:
-   ```bash
-   git push origin feature-name
-   ```
-5. Create a pull request.
-
----
-
-## **License**
-This project is licensed under the MIT License.
-
----
-
-## **Contact**
-For any questions or issues, please contact:
-- **Email**: yourname@example.com
-- **GitHub**: [yourusername](https://github.com/yourusername)
-
---- 
-
-You can replace placeholders like `yourusername` and `yourname@example.com` with your actual information.
